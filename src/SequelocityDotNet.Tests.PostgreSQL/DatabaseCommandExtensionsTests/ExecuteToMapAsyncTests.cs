@@ -1,10 +1,12 @@
-﻿using System.Data;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Data;
 using NUnit.Framework;
 
 namespace SequelocityDotNet.Tests.PostgreSQL.DatabaseCommandExtensionsTests
 {
     [TestFixture]
-    public class ExecuteToDynamicListTests
+    public class ExecuteToMapAsyncTests
     {
         public class SuperHero
         {
@@ -13,7 +15,7 @@ namespace SequelocityDotNet.Tests.PostgreSQL.DatabaseCommandExtensionsTests
         }
 
         [Test]
-        public void Should_Map_The_Results_Back_To_A_List_Of_Dynamic()
+        public void Should_Call_The_DataRecordCall_Action_For_Each_Record_In_The_Result_Set()
         {
             // Arrange
             const string sql = @"
@@ -21,9 +23,8 @@ DROP TABLE IF EXISTS SuperHero;
 
 CREATE TEMPORARY TABLE SuperHero
 (
-    SuperHeroId     serial not null,
-    SuperHeroName	VARCHAR(120)    NOT NULL,
-    PRIMARY KEY ( SuperHeroId )
+    SuperHeroId     serial not null primary key,
+    SuperHeroName	VARCHAR(120)    NOT NULL
 );
 
 INSERT INTO SuperHero ( SuperHeroName )
@@ -38,16 +39,22 @@ FROM    SuperHero;
 ";
 
             // Act
-            var superHeroes = Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
+            var superHeroesTask = Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
                 .SetCommandText(sql)
-                .ExecuteToDynamicList();
+                .ExecuteToMapAsync(record =>
+                {
+                    var obj = new SuperHero
+                    {
+                        SuperHeroId = record.GetValue(0).ToLong(),
+                        SuperHeroName = record.GetValue(1).ToString()
+                    };
+
+                    return obj;
+                });
 
             // Assert
-            Assert.That(superHeroes.Count == 2);
-            Assert.That(superHeroes[0].SuperHeroId == 1);
-            Assert.That(superHeroes[0].SuperHeroName == "Superman");
-            Assert.That(superHeroes[1].SuperHeroId == 2);
-            Assert.That(superHeroes[1].SuperHeroName == "Batman");
+            Assert.IsInstanceOf<Task<List<SuperHero>>>(superHeroesTask);
+            Assert.That(superHeroesTask.Result.Count == 2);
         }
 
         [Test]
@@ -59,9 +66,8 @@ DROP TABLE IF EXISTS SuperHero;
 
 CREATE TEMPORARY TABLE SuperHero
 (
-    SuperHeroId     serial not null,
-    SuperHeroName	VARCHAR(120)    NOT NULL,
-    PRIMARY KEY ( SuperHeroId )
+    SuperHeroId     serial not null primary key,
+    SuperHeroName	VARCHAR(120)    NOT NULL
 );
 
 INSERT INTO SuperHero ( SuperHeroName )
@@ -78,7 +84,17 @@ FROM    SuperHero;
                 .SetCommandText(sql);
 
             // Act
-            var superHeroes = databaseCommand.ExecuteToDynamicList();
+            databaseCommand.ExecuteToMapAsync(record =>
+            {
+                var obj = new SuperHero
+                {
+                    SuperHeroId = record.GetValue(0).ToLong(),
+                    SuperHeroName = record.GetValue(1).ToString()
+                };
+
+                return obj;
+            })
+            .Wait(); // Block until the task completes.
 
             // Assert
             Assert.IsNull(databaseCommand.DbCommand);
@@ -93,9 +109,8 @@ DROP TABLE IF EXISTS SuperHero;
 
 CREATE TEMPORARY TABLE SuperHero
 (
-    SuperHeroId     serial not null,
-    SuperHeroName	VARCHAR(120)    NOT NULL,
-    PRIMARY KEY ( SuperHeroId )
+    SuperHeroId     serial not null primary key,
+    SuperHeroName	VARCHAR(120)    NOT NULL
 );
 
 INSERT INTO SuperHero ( SuperHeroName )
@@ -112,7 +127,17 @@ FROM    SuperHero;
                 .SetCommandText(sql);
 
             // Act
-            var superHeroes = databaseCommand.ExecuteToDynamicList(true);
+            databaseCommand.ExecuteToMapAsync(record =>
+            {
+                var obj = new SuperHero
+                {
+                    SuperHeroId = record.GetValue(0).ToLong(),
+                    SuperHeroName = record.GetValue(1).ToString()
+                };
+
+                return obj;
+            }, true)
+            .Wait(); // Block until the task completes.
 
             // Assert
             Assert.That(databaseCommand.DbCommand.Connection.State == ConnectionState.Open);
@@ -130,9 +155,19 @@ FROM    SuperHero;
             Sequelocity.ConfigurationSettings.EventHandlers.DatabaseCommandPreExecuteEventHandlers.Add(command => wasPreExecuteEventHandlerCalled = true);
 
             // Act
-            var superHeroes = Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
+            Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
                 .SetCommandText("SELECT 1 as SuperHeroId, 'Superman' as SuperHeroName")
-                .ExecuteToDynamicList();
+                .ExecuteToMapAsync(record =>
+                {
+                    var obj = new SuperHero
+                    {
+                        SuperHeroId = record.GetValue(0).ToLong(),
+                        SuperHeroName = record.GetValue(1).ToString()
+                    };
+
+                    return obj;
+                })
+                .Wait(); // Block until the task completes.
 
             // Assert
             Assert.IsTrue(wasPreExecuteEventHandlerCalled);
@@ -147,9 +182,19 @@ FROM    SuperHero;
             Sequelocity.ConfigurationSettings.EventHandlers.DatabaseCommandPostExecuteEventHandlers.Add(command => wasPostExecuteEventHandlerCalled = true);
 
             // Act
-            var superHeroes = Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
+            Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
                 .SetCommandText("SELECT 1 as SuperHeroId, 'Superman' as SuperHeroName")
-                .ExecuteToDynamicList();
+                .ExecuteToMapAsync(record =>
+                {
+                    var obj = new SuperHero
+                    {
+                        SuperHeroId = record.GetValue(0).ToLong(),
+                        SuperHeroName = record.GetValue(1).ToString()
+                    };
+
+                    return obj;
+                })
+                .Wait(); // Block until the task completes.
 
             // Assert
             Assert.IsTrue(wasPostExecuteEventHandlerCalled);
@@ -167,9 +212,18 @@ FROM    SuperHero;
             });
 
             // Act
-            TestDelegate action = () => Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
+            TestDelegate action = async () => await Sequelocity.GetDatabaseCommand(ConnectionStringsNames.PostgreSQLConnectionString)
                 .SetCommandText("asdf;lkj")
-                .ExecuteToDynamicList();
+                .ExecuteToMapAsync(record =>
+                {
+                    var obj = new SuperHero
+                    {
+                        SuperHeroId = record.GetValue(0).ToLong(),
+                        SuperHeroName = record.GetValue(1).ToString()
+                    };
+
+                    return obj;
+                });
 
             // Assert
             Assert.Throws<global::Npgsql.NpgsqlException>(action);
