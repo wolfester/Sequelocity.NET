@@ -35,6 +35,7 @@ CREATE TEMPORARY TABLE Customer
             string connectionString = ConfigurationManager.ConnectionStrings[ConnectionStringsNames.PostgreSQLConnectionString].ConnectionString;
 
             var dbConnection = Sequelocity.CreateDbConnection(connectionString, "Npgsql");
+            connectionString = dbConnection.ConnectionString;
 
             new DatabaseCommand(dbConnection)
                 .SetCommandText(sql)
