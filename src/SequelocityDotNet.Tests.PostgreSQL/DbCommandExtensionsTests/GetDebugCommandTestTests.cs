@@ -44,11 +44,13 @@ CREATE TEMPORARY TABLE Customer
             var customer2 = new Customer { FirstName = "Bruce", LastName = "Wayne", DateOfBirth = DateTime.Parse("05/27/1939") };
 
             var databaseCommand = new DatabaseCommand(dbConnection)
-                .GenerateInsertForMySql(customer)
-                .GenerateInsertForMySql(customer2);
+                .GenerateInsertForPostgreSQL(customer)
+                .GenerateInsertForPostgreSQL(customer2);
 
             // Act
             var debugCommandText = databaseCommand.DbCommand.GetDebugCommandText();
+
+            dbConnection.Close();
 
             // Visual Assertion
             Trace.WriteLine(debugCommandText);
@@ -86,12 +88,14 @@ CREATE TEMPORARY TABLE Customer
             var customer2 = new Customer { FirstName = "Bruce", LastName = "Wayne", DateOfBirth = DateTime.Parse("05/27/1939") };
 
             var databaseCommand = new DatabaseCommand(dbConnection)
-                .GenerateInsertForMySql(customer)
-                .GenerateInsertForMySql(customer2);
+                .GenerateInsertForPostgreSQL(customer)
+                .GenerateInsertForPostgreSQL(customer2);
 
             // Act
 
             var debugCommandText = databaseCommand.DbCommand.GetDebugCommandText();
+
+            dbConnection.Close();
 
             // Visual Assertion
             Trace.WriteLine(debugCommandText);
